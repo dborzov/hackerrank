@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strings"
+    "fmt"
+    "os"
 )
 
 func main() {
@@ -20,59 +19,78 @@ func main() {
 }
 
 func FindMaxL(S int, P, Q string) int {
-	fmt.Fprintf(os.Stderr, strings.Repeat("~", 10)+"\n")
-	defer fmt.Fprintf(os.Stderr, strings.Repeat("-", 10)+"\n")
-    fmt.Fprintf(os.Stderr, "   Executed with S:%v,\n     P: \"%v\"\n     Q: \"%v\" \n", S, P, Q)
+    cur := matcher{}
+    suffixer := make(map[string]matcher)
 
-	A := make([][]match, len(P))
-	for i := 0; i < len(P); i++ {
-		A[i] = make([]match, len(Q))
-	}
 
-	for i := 0; i < len(P); i++ {
-		for j := 0; j < len(Q); j++ {
-			if Get(A,i-1, j-1).Subsequents(i, j) && P[i] == Q[j] {
-				A[i][j] = Get(A,i-1, j-1)
-				A[i][j].indices = append(A[i][j].indices, i, j)
-				continue
-			}
-
-			A[i][j] = Get(A,i-1, j)
-			if len(Get(A,i, j-1).indices) > len(Get(A,i-1, j).indices) {
-				A[i][j] = Get(A,i, j-1)
-			}
-		}
-	}
-
-    fmt.Fprintf(os.Stderr, "    [%v]\n    ---> %v <---\n", A[len(P)-1][len(Q)-1].indices,A[len(P)-1][len(Q)-1].String(P))
-
-	return 42
-}
-
-type match struct {
-	indices []int
-	s       int
-}
-
-func (m match) Subsequents(i, j int) bool {
-	if len(m.indices) < 2 {
-		return true
-	}
-	return m.indices[len(m.indices)-2] == i-1 && m.indices[len(m.indices)-1] == j-1
-}
-
-func (m match) String(P string) string{
-    var out []byte
-    for i:=0; i< len(m.indices); i +=2 {
-        out = append(out, P[m.indices[i]])
+    showMatch := func(m matcher) string{
+        return P[:m.Plow] + "["+ P[m.Plow:m.Phigh] + "]"+ P[m.Phigh:] +"-->"+ Q[:m.Qlow] + "[" + Q[m.Qlow:m.Qhigh] + "]" + Q[m.Qhigh:]
     }
-    return string(out)
+
+
+    for i:=0; i<= len(P); i++ {
+        for j:=0; j<=len(Q); j++ {
+            if i==0 || j==0 {
+                suffixer[string(i)+","+string(j)] = matcher{
+                    Plow:i,
+                    Phigh:i,
+                    Qlow:j,
+                    Qhigh:j,
+                }
+                continue
+            }
+
+            upd := suffixer[string(i-1)+","+string(j-1)]
+            if P[i-1]==Q[j-1]{
+                upd.Phigh = i
+                upd.Qhigh = j
+                if cur.Len() < upd.Len() {
+                    cur = upd
+                }
+                suffixer[string(i)+","+string(j)] = upd
+                continue
+            }
+
+
+            if upd.s < S {
+                upd.s++
+                upd.Phigh = i
+                upd.Qhigh = j
+                if cur.Len() < upd.Len() {
+                    cur = upd
+                }
+                suffixer[string(i)+","+string(j)] = upd
+                continue
+            }
+
+            if P[upd.Plow] == Q[upd.Qlow] {
+                suffixer[string(i)+","+string(j)] = matcher{
+                    Plow:i,
+                    Phigh:i,
+                    Qlow:j,
+                    Qhigh:j,
+                }
+                continue
+            }
+
+            upd.Plow++
+            upd.Qlow++
+            suffixer[string(i)+","+string(j)] = upd
+
+
+        }
+    }
+    fmt.Fprintf(os.Stderr, "the optimal is : %v \n", showMatch(cur))
+    return cur.Len()
 }
 
 
-func Get(A [][]match, i, j int) match {
-	if i < 0 || j < 0 {
-		return match{}
-	}
-	return A[i][j]
+type matcher struct{
+    Phigh, Plow int
+    Qhigh, Qlow int
+    s int
+}
+
+func (m matcher) Len() int {
+    return m.Phigh - m.Plow
 }
